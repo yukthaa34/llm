@@ -1,0 +1,61 @@
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+import numpy as np
+from collections import defaultdict
+
+# Sample documents
+documents = [
+    "Machine learning algorithms process data to make predictions",
+    "Neural networks are inspired by biological brain structures",
+    "Deep learning has revolutionized computer vision and AI",
+    "Python is a popular programming language for data science",
+    "Data structures are fundamental to computer programming",
+    "JavaScript is used for web development and applications",
+    "Natural language processing helps understand human text",
+    "Artificial intelligence is changing modern technology",
+    "Web development involves HTML, CSS, and JavaScript",
+    "Database systems store and organize data efficiently"
+]
+
+def cluster_documents(documents, num_clusters=3, num_topics=5):
+    # Create TF-IDF vectors
+    vectorizer = TfidfVectorizer(stop_words='english')
+    tfidf_matrix = vectorizer.fit_transform(documents)
+    
+    # Perform K-means clustering
+    kmeans = KMeans(n_clusters=num_clusters, random_state=42)
+    clusters = kmeans.fit_predict(tfidf_matrix)
+    
+    # Extract topics for each cluster
+    feature_names = vectorizer.get_feature_names_out()
+    cluster_topics = defaultdict(list)
+    
+    for cluster_id in range(num_clusters):
+        # Get documents in this cluster
+        cluster_docs = np.where(clusters == cluster_id)[0]
+        
+        if len(cluster_docs) > 0:
+            # Calculate mean TF-IDF scores for this cluster
+            cluster_center = tfidf_matrix[cluster_docs].mean(axis=0).A1
+            
+            # Get top words based on TF-IDF scores
+            top_indices = cluster_center.argsort()[-num_topics:][::-1]
+            topics = [feature_names[i] for i in top_indices]
+            
+            cluster_topics[f"Cluster {cluster_id}"] = {
+                "topics": topics,
+                "documents": [documents[i] for i in cluster_docs]
+            }
+    
+    return cluster_topics
+
+# Perform clustering and topic extraction
+topics = cluster_documents(documents)
+
+# Print results
+for cluster, data in topics.items():
+    print(f"\n{cluster}")
+    print("Top topics:", ", ".join(data["topics"]))
+    print("\nDocuments:")
+    for doc in data["documents"]:
+        print(f"- {doc}")
