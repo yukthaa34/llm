@@ -1,0 +1,79 @@
+import torch
+import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
+
+class SimpleTransformer(nn.Module):
+    def __init__(self, vocab_size, d_model=256, nhead=4, num_layers=2):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, d_model)
+        self.transformer = nn.Transformer(
+            d_model=d_model,
+            nhead=nhead,
+            num_encoder_layers=num_layers,
+            num_decoder_layers=num_layers,
+            batch_first=True
+        )
+        self.fc = nn.Linear(d_model, vocab_size)
+    
+    def forward(self, src, tgt):
+        src_embed = self.embedding(src)
+        tgt_embed = self.embedding(tgt)
+        out = self.transformer(src_embed, tgt_embed)
+        return self.fc(out)
+
+# Sample dataset
+dialogues = [
+    ("Hello", "Hi there!"),
+    ("How are you?", "I'm doing well, thanks!"),
+    ("What's the weather like?", "It's sunny today."),
+]
+
+# Simple tokenizer
+def create_vocab(dialogues):
+    vocab = {"<pad>": 0, "<sos>": 1, "<eos>": 2}
+    for q, a in dialogues:
+        for word in q.split() + a.split():
+            if word not in vocab:
+                vocab[word] = len(vocab)
+    return vocab
+
+# Train model
+def train_model(dialogues, vocab, epochs=10):
+    model = SimpleTransformer(len(vocab))
+    optimizer = torch.optim.Adam(model.parameters())
+    criterion = nn.CrossEntropyLoss()
+    
+    for epoch in range(epochs):
+        for q, a in dialogues:
+            # Convert to indices
+            src = torch.tensor([[vocab[w] for w in q.split()]])
+            tgt = torch.tensor([[vocab[w] for w in a.split()]])
+            
+            optimizer.zero_grad()
+            output = model(src, tgt)
+            loss = criterion(output.view(-1, len(vocab)), tgt.view(-1))
+            loss.backward()
+            optimizer.step()
+    
+    return model
+
+# Create vocab and train
+vocab = create_vocab(dialogues)
+model = train_model(dialogues, vocab)
+
+# Generate response
+def generate_response(model, question, vocab):
+    inv_vocab = {v: k for k, v in vocab.items()}
+    src = torch.tensor([[vocab[w] for w in question.split()]])
+    tgt = torch.tensor([[vocab["<sos>"]]])
+    
+    with torch.no_grad():
+        output = model(src, tgt)
+        prediction = torch.argmax(output[0], dim=1)
+        return " ".join([inv_vocab[idx.item()] for idx in prediction])
+
+# Test
+test_question = "Hello"
+response = generate_response(model, test_question, vocab)
+print(f"Q: {test_question}")
+print(f"A: {response}")
