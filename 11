@@ -1,0 +1,56 @@
+import torch
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
+
+class CreativeTextGenerator:
+    def __init__(self):
+        self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+        self.model = GPT2LMHeadModel.from_pretrained('gpt2')
+        self.model.eval()
+    
+    def generate_text(self, prompt, max_length=200, temperature=0.8, top_k=40, top_p=0.9):
+        """
+        Generate creative text based on a prompt.
+        
+        Args:
+            prompt: Input text to start generation
+            max_length: Maximum length of generated text
+            temperature: Controls randomness (higher = more random)
+            top_k: Number of highest probability tokens to consider
+            top_p: Cumulative probability threshold for tokens
+        """
+        # Encode prompt
+        inputs = self.tokenizer.encode(prompt, return_tensors='pt')
+        
+        # Generate text
+        with torch.no_grad():
+            outputs = self.model.generate(
+                inputs,
+                max_length=max_length,
+                temperature=temperature,
+                top_k=top_k,
+                top_p=top_p,
+                num_return_sequences=1,
+                pad_token_id=self.tokenizer.eos_token_id,
+                do_sample=True
+            )
+        
+        # Decode and return generated text
+        generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return generated_text
+
+# Create generator instance
+generator = CreativeTextGenerator()
+
+# Example prompts
+creative_prompts = [
+    "In a world where dreams become reality,",
+    "The artificial intelligence discovered something unexpected:",
+    "Time travel was finally possible, but there was one catch:"
+]
+
+# Generate text for each prompt
+for prompt in creative_prompts:
+    print(f"\nPrompt: {prompt}")
+    generated_text = generator.generate_text(prompt)
+    print(f"Generated Text: {generated_text}\n")
+    print("-" * 50)
